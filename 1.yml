@@ -1,0 +1,66 @@
+- hosts: web
+  become: yes
+  user: ec2-user
+  gather_facts: false
+  vars:
+    jenkins_port: 9090
+  
+  tasks:
+  - name: Adding Jenkins rpm repository
+    yum_repository:
+      name: jenkins
+      description: Jenkins
+      baseurl: http://pkg.jenkins.io/redhat
+      gpgcheck: yes
+      gpgkey: https://jenkins-ci.org/redhat/jenkins-ci.org.key
+
+  - name: I'm going to install jenkins and java
+    package:
+        state: present 
+        name: "{{item}}"
+    loop:
+      - java
+      - jenkins 
+      - cowsay
+
+  - name: I'm going to start the service
+    service:
+      name: jenkins
+      state: started
+
+  - name: Show Jenkins password
+    shell: cat /var/lib/jenkins/secrets/initialAdminPassword
+    register: password
+  
+  - name: debug password variable
+    debug:
+      msg: "{{ password.stdout }}"
+
+  - lineinfile:
+      path: /etc/sysconfig/jenkins # required. The file to modify.,Before 2.3 this option was only usable as I(dest), I(destfile) and I(name).
+      regexp: JENKINS_PORT # not required. The regular expression to look for in every line of the file. For C(state=present), the pattern to replace if found. Only the last line found will be replaced. For C(state=absent), the pattern of the line(s) to remove. Uses Python regular expressions. See U(http://docs.python.org/2/library/re.html).
+      line: JENKINS_PORT="{{ jenkins_port }}" # not required. Required for C(state=present). The line to insert/replace into the file. If C(backrefs) is set, may contain backreferences that will get expanded with the C(regexp) capture groups if the regexp matches.
+
+  - name: I'm going to start the service
+    service:
+      name: jenkins
+      state: restarted
+
+
+- hosts: db
+  become: yes
+  user: ec2-user
+  tasks:
+  - name: I'm going to install cowsay in db
+    package:
+        state: absent 
+        name: cowsay
+
+- hosts: all
+  become: yes
+  user: ec2-user
+  tasks:
+  - name: I'm going to install cowsay in all
+    package:
+        state: absent 
+        name: cowsay
